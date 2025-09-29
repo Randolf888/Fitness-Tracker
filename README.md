@@ -1,4 +1,4 @@
-# FitLog Pro 
+# FitTracker Pro 
 
 ## 📌 Project Title & Team Members
 - **Project Title:** FitLog Pro - Fitness Activity Tracker  
