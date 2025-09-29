@@ -20,10 +20,10 @@ app.use('/progress', progressRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
-  res.json({ message: 'FitLog Pro API is running!' });
+  res.json({ message: 'FitTracker Pro API is running!' });
 });
 
 // Start server
 app.listen(port, () => {
-  console.log(`FitLog Pro server running on http://localhost:${port}`);
+  console.log(`FitTracker Pro server running on http://localhost:${port}`);
 });
