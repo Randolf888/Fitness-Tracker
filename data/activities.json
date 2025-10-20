@@ -1,0 +1,24 @@
+[
+  {
+    "id": 1,
+    "userId": 1,
+    "type": "running",
+    "duration": 30,
+    "calories": 300,
+    "distance": 5.2,
+    "intensity": "moderate",
+    "date": "2024-01-15T08:00:00Z",
+    "notes": "Morning run in the park"
+  },
+  {
+    "id": 2,
+    "userId": 1,
+    "type": "walking",
+    "duration": 45,
+    "calories": 180,
+    "distance": 3.5,
+    "intensity": "low",
+    "date": "2024-01-16T18:00:00Z",
+    "notes": "Evening walk"
+  }
+]

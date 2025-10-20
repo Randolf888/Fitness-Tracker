@@ -1,0 +1,11 @@
+[
+  {
+    "id": 1,
+    "userId": 1,
+    "type": "daily_steps",
+    "target": 10000,
+    "current": 8500,
+    "deadline": "2024-12-31",
+    "status": "in_progress"
+  }
+]

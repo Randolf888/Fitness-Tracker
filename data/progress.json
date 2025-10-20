@@ -1,0 +1,80 @@
+[
+  {
+    "id": 1,
+    "userId": 1,
+    "date": "2024-01-15",
+    "metrics": {
+      "steps": 8436,
+      "caloriesBurned": 285,
+      "activeMinutes": 45,
+      "distance": 6.2,
+      "sleepHours": 7.5,
+      "waterIntake": 2000
+    },
+    "goals": {
+      "dailySteps": 10000,
+      "dailyCalories": 250,
+      "weeklyWorkouts": 5,
+      "sleepTarget": 8
+    },
+    "achievement": {
+      "stepsProgress": 84,
+      "caloriesProgress": 114,
+      "workoutsCompleted": 3,
+      "sleepQuality": 94
+    },
+    "workouts": [
+      {
+        "type": "running",
+        "duration": 30,
+        "calories": 300,
+        "completed": true
+      },
+      {
+        "type": "strength",
+        "duration": 45,
+        "calories": 200,
+        "completed": true
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "userId": 1,
+    "date": "2024-01-16",
+    "metrics": {
+      "steps": 9250,
+      "caloriesBurned": 320,
+      "activeMinutes": 52,
+      "distance": 7.1,
+      "sleepHours": 8.0,
+      "waterIntake": 2200
+    },
+    "goals": {
+      "dailySteps": 10000,
+      "dailyCalories": 250,
+      "weeklyWorkouts": 5,
+      "sleepTarget": 8
+    },
+    "achievement": {
+      "stepsProgress": 92,
+      "caloriesProgress": 128,
+      "workoutsCompleted": 4,
+      "sleepQuality": 100
+    },
+    "workouts": [
+      {
+        "type": "walking",
+        "duration": 45,
+        "calories": 180,
+        "completed": true
+      },
+      {
+        "type": "yoga",
+        "duration": 30,
+        "calories": 120,
+        "completed": true
+      }
+    ]
+  }
+]
