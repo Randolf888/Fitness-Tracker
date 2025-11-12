@@ -1,111 +1,103 @@
 const express = require('express');
-const router = express.Router();
 const progressModel = require('../models/progress.model');
-const { validateProgress, handleValidationErrors } = require('../middlewares/progress.middleware');
 
-// GET /progress
-router.get('/', (req, res) => {
+const router = express.Router();
+
+const getPaginationParams = (query) => {
+  const page = Math.max(1, parseInt(query.page) || 1);
+  const limit = Math.min(100, parseInt(query.limit) || 10);
+  const skip = (page - 1) * limit;
+  return { page, limit, skip };
+};
+
+// GET all progress records with search, sort, and pagination
+router.get('/', async (req, res) => {
   try {
-    const progress = progressModel.getAllProgress();
+    const { search, sort } = req.query;
+    const { skip, limit } = getPaginationParams(req.query);
+
+    let query = {};
+    
+    if (search) {
+      query.$or = [
+        { activity: { $regex: search, $options: 'i' } },
+        { notes: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const sortOptions = sort ? Object.fromEntries(
+      sort.split(',').map(s => [s.startsWith('-') ? s.slice(1) : s, s.startsWith('-') ? -1 : 1])
+    ) : { date: -1 };
+
+    const progress = await progressModel
+      .find(query)
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(limit);
+
+    const total = await progressModel.countDocuments(query);
+
     res.status(200).json({
       success: true,
       data: progress,
-      count: progress.length
+      pagination: {
+        total,
+        page: parseInt(req.query.page) || 1,
+        limit,
+        pages: Math.ceil(total / limit)
+      }
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch progress data',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// GET /progress/date/:date
-router.get('/date/:date', (req, res) => {
+// GET progress by ID
+router.get('/:id', async (req, res) => {
   try {
-    const progress = progressModel.getProgressByDate(req.params.date);
+    const progress = await progressModel.findById(req.params.id);
     if (!progress) {
-      return res.status(404).json({
-        success: false,
-        message: 'Progress data not found for this date'
-      });
+      return res.status(404).json({ success: false, message: 'Progress record not found' });
     }
-    res.status(200).json({
-      success: true,
-      data: progress
-    });
+    res.status(200).json({ success: true, data: progress });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch progress data',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// GET /progress/:id
-router.get('/:id', (req, res) => {
+// POST create progress record
+router.post('/', async (req, res) => {
   try {
-    const progress = progressModel.getProgressById(req.params.id);
+    const progress = await progressModel.create(req.body);
+    res.status(201).json({ success: true, data: progress });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// PUT update progress record
+router.put('/:id', async (req, res) => {
+  try {
+    const progress = await progressModel.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!progress) {
-      return res.status(404).json({
-        success: false,
-        message: 'Progress record not found'
-      });
+      return res.status(404).json({ success: false, message: 'Progress record not found' });
     }
-    res.status(200).json({
-      success: true,
-      data: progress
-    });
+    res.status(200).json({ success: true, data: progress });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch progress record',
-      error: error.message
-    });
+    res.status(400).json({ success: false, message: error.message });
   }
 });
 
-// POST /progress
-router.post('/', validateProgress, handleValidationErrors, (req, res) => {
+// DELETE progress record
+router.delete('/:id', async (req, res) => {
   try {
-    const newProgress = progressModel.addProgress(req.body);
-    res.status(201).json({
-      success: true,
-      message: 'Progress data added successfully',
-      data: newProgress
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to add progress data',
-      error: error.message
-    });
-  }
-});
-
-// PUT /progress/:id
-router.put('/:id', validateProgress, handleValidationErrors, (req, res) => {
-  try {
-    const updatedProgress = progressModel.updateProgress(req.params.id, req.body);
-    if (!updatedProgress) {
-      return res.status(404).json({
-        success: false,
-        message: 'Progress record not found'
-      });
+    const progress = await progressModel.findByIdAndDelete(req.params.id);
+    if (!progress) {
+      return res.status(404).json({ success: false, message: 'Progress record not found' });
     }
-    res.status(200).json({
-      success: true,
-      message: 'Progress data updated successfully',
-      data: updatedProgress
-    });
+    res.status(200).json({ success: true, message: 'Progress record deleted' });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update progress data',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

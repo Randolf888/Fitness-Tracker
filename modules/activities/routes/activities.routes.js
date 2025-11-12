@@ -1,111 +1,105 @@
 const express = require('express');
-const router = express.Router();
-const activityModel = require('../models/activities.model');
-const { validateActivity, handleValidationErrors } = require('../middlewares/activities.middleware');
+const activitiesModel = require('../models/activities.model');
 
-// GET /activities - Get all activities
-router.get('/', (req, res) => {
+const router = express.Router();
+
+// Helper function for pagination and sorting
+const getPaginationParams = (query) => {
+  const page = Math.max(1, parseInt(query.page) || 1);
+  const limit = Math.min(100, parseInt(query.limit) || 10);
+  const skip = (page - 1) * limit;
+  return { page, limit, skip };
+};
+
+// GET all activities with search, sort, and pagination
+router.get('/', async (req, res) => {
   try {
-    const activities = activityModel.getAllActivities();
+    const { search, sort } = req.query;
+    const { skip, limit } = getPaginationParams(req.query);
+
+    let query = {};
+    
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { category: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const sortOptions = sort ? Object.fromEntries(
+      sort.split(',').map(s => [s.startsWith('-') ? s.slice(1) : s, s.startsWith('-') ? -1 : 1])
+    ) : { createdAt: -1 };
+
+    const activities = await activitiesModel
+      .find(query)
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(limit);
+
+    const total = await activitiesModel.countDocuments(query);
+
     res.status(200).json({
       success: true,
       data: activities,
-      count: activities.length
+      pagination: {
+        total,
+        page: parseInt(req.query.page) || 1,
+        limit,
+        pages: Math.ceil(total / limit)
+      }
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch activities',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// GET /activities/:id - Get activity by ID
-router.get('/:id', (req, res) => {
+// GET activity by ID
+router.get('/:id', async (req, res) => {
   try {
-    const activity = activityModel.getActivityById(req.params.id);
+    const activity = await activitiesModel.findById(req.params.id);
     if (!activity) {
-      return res.status(404).json({
-        success: false,
-        message: 'Activity not found'
-      });
+      return res.status(404).json({ success: false, message: 'Activity not found' });
     }
-    res.status(200).json({
-      success: true,
-      data: activity
-    });
+    res.status(200).json({ success: true, data: activity });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch activity',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// POST /activities - Create new activity
-router.post('/', validateActivity, handleValidationErrors, (req, res) => {
+// POST create activity
+router.post('/', async (req, res) => {
   try {
-    const newActivity = activityModel.addNewActivity(req.body);
-    res.status(201).json({
-      success: true,
-      message: 'Activity created successfully',
-      data: newActivity
-    });
+    const activity = await activitiesModel.create(req.body);
+    res.status(201).json({ success: true, data: activity });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to create activity',
-      error: error.message
-    });
+    res.status(400).json({ success: false, message: error.message });
   }
 });
 
-// PUT /activities/:id - Update activity
-router.put('/:id', validateActivity, handleValidationErrors, (req, res) => {
+// PUT update activity
+router.put('/:id', async (req, res) => {
   try {
-    const updatedActivity = activityModel.updateExistingActivity(req.params.id, req.body);
-    if (!updatedActivity) {
-      return res.status(404).json({
-        success: false,
-        message: 'Activity not found'
-      });
+    const activity = await activitiesModel.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!activity) {
+      return res.status(404).json({ success: false, message: 'Activity not found' });
     }
-    res.status(200).json({
-      success: true,
-      message: 'Activity updated successfully',
-      data: updatedActivity
-    });
+    res.status(200).json({ success: true, data: activity });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update activity',
-      error: error.message
-    });
+    res.status(400).json({ success: false, message: error.message });
   }
 });
 
-// DELETE /activities/:id - Delete activity
-router.delete('/:id', (req, res) => {
+// DELETE activity
+router.delete('/:id', async (req, res) => {
   try {
-    const deleted = activityModel.deleteActivity(req.params.id);
-    if (!deleted) {
-      return res.status(404).json({
-        success: false,
-        message: 'Activity not found'
-      });
+    const activity = await activitiesModel.findByIdAndDelete(req.params.id);
+    if (!activity) {
+      return res.status(404).json({ success: false, message: 'Activity not found' });
     }
-    res.status(200).json({
-      success: true,
-      message: 'Activity deleted successfully'
-    });
+    res.status(200).json({ success: true, message: 'Activity deleted' });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to delete activity',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

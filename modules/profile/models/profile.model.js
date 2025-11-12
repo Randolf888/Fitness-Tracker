@@ -1,37 +1,47 @@
-const fs = require('fs');
-const path = require('path');
-const usersPath = path.join(__dirname, '../../../data/users.json');
+const mongoose = require('mongoose');
 
-const getUserProfile = (userId = 1) => {
-  const users = JSON.parse(fs.readFileSync(usersPath));
-  const user = users.find(u => u.id === userId);
+// Note: Profile data is embedded in the User model, so we use the User model directly
+const { User } = require('../auth/models/auth.model');
+
+const getUserProfile = async (userId) => {
+  const user = await User.findById(userId).select('-password');
+  if (!user) return null;
+
+  return {
+    id: user._id,
+    username: user.username,
+    email: user.email,
+    profile: user.profile || {},
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt
+  };
+};
+
+const updateUserProfile = async (userId, updateData) => {
+  const allowedUpdates = ['username', 'email', 'profile'];
+  const updates = {};
+
+  allowedUpdates.forEach(field => {
+    if (updateData[field] !== undefined) {
+      updates[field] = updateData[field];
+    }
+  });
+
+  const user = await User.findByIdAndUpdate(userId, updates, {
+    new: true,
+    runValidators: true
+  }).select('-password');
 
   if (!user) return null;
 
   return {
-    id: user.id,
+    id: user._id,
     username: user.username,
     email: user.email,
     profile: user.profile || {},
-    preferences: user.preferences || {},
-    createdAt: user.createdAt
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt
   };
-};
-
-const updateUserProfile = (userId, updateData) => {
-  const users = JSON.parse(fs.readFileSync(usersPath));
-  const userIndex = users.findIndex(u => u.id === userId);
-
-  if (userIndex === -1) return null;
-
-  users[userIndex] = {
-    ...users[userIndex],
-    ...updateData,
-    updatedAt: new Date().toISOString()
-  };
-
-  fs.writeFileSync(usersPath, JSON.stringify(users, null, 2));
-  return users[userIndex];
 };
 
 module.exports = {

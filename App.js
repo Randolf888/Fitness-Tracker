@@ -5,6 +5,10 @@ const port = 3000;
 // Import middlewares
 const errorHandler = require('./middlewares/errorHandler');
 const notFound = require('./middlewares/notFound');
+const connectDB = require('./shared/middlewares/connect-db');
+
+// Connect to MongoDB
+connectDB();
 
 // 1. Application-level middlewares FIRST
 app.use(express.json());

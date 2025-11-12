@@ -1,33 +1,58 @@
-const fs = require('fs');
-const path = require('path');
-const activitiesPath = path.join(__dirname, '../../data/activities.json');
-const progressPath = path.join(__dirname, '../../data/progress.json');
-const goalsPath = path.join(__dirname, '../../data/goals.json');
+const mongoose = require('mongoose');
+const { Activity } = require('../activities/models/activities.model');
+const { Progress } = require('../progress/models/progress.model');
+const { Goal } = require('../goals/models/goals.model');
 
-const getDashboardData = (userId = 1) => {
-  const activities = JSON.parse(fs.readFileSync(activitiesPath));
-  const progress = JSON.parse(fs.readFileSync(progressPath));
-  const goals = JSON.parse(fs.readFileSync(goalsPath));
+const getDashboardData = async (userId) => {
+  // Get recent activities (last 30 days)
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const userActivities = activities.filter(activity => activity.userId === userId);
-  const userProgress = progress.filter(p => p.userId === userId);
-  const userGoals = goals.filter(goal => goal.userId === userId);
+  const activities = await Activity.find({
+    userId,
+    date: { $gte: thirtyDaysAgo }
+  }).sort({ date: -1 }).limit(10);
 
-  // Calculate stats
-  const totalSteps = userProgress.reduce((sum, day) => sum + day.metrics.steps, 0);
-  const totalCalories = userActivities.reduce((sum, activity) => sum + activity.calories, 0);
-  const avgSleep = userProgress.reduce((sum, day) => sum + day.metrics.sleepHours, 0) / userProgress.length;
+  // Get recent progress (last 7 days)
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const progress = await Progress.find({
+    userId,
+    createdAt: { $gte: sevenDaysAgo }
+  }).sort({ date: -1 });
+
+  // Get current goals
+  const goals = await Goal.find({
+    userId,
+    status: 'in_progress'
+  }).sort({ deadline: 1 });
+
+  // Calculate summary stats
+  const totalActivities = await Activity.countDocuments({ userId });
+  const totalSteps = await Progress.aggregate([
+    { $match: { userId: mongoose.Types.ObjectId(userId) } },
+    { $group: { _id: null, total: { $sum: '$metrics.steps' } } }
+  ]);
+  const totalCalories = await Activity.aggregate([
+    { $match: { userId: mongoose.Types.ObjectId(userId) } },
+    { $group: { _id: null, total: { $sum: '$calories' } } }
+  ]);
+  const avgSleep = await Progress.aggregate([
+    { $match: { userId: mongoose.Types.ObjectId(userId) } },
+    { $group: { _id: null, avg: { $avg: '$metrics.sleepHours' } } }
+  ]);
 
   return {
     summary: {
-      totalActivities: userActivities.length,
-      totalSteps,
-      totalCaloriesBurned: totalCalories,
-      averageSleep: avgSleep.toFixed(1)
+      totalActivities,
+      totalSteps: totalSteps[0]?.total || 0,
+      totalCaloriesBurned: totalCalories[0]?.total || 0,
+      averageSleep: avgSleep[0]?.avg ? avgSleep[0].avg.toFixed(1) : 0
     },
-    recentActivities: userActivities.slice(-5),
-    currentGoals: userGoals.filter(goal => goal.status === 'in_progress'),
-    progressTrend: userProgress.slice(-7) // Last 7 days
+    recentActivities: activities,
+    currentGoals: goals,
+    progressTrend: progress
   };
 };
 
