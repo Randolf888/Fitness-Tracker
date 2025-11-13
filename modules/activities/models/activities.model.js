@@ -43,51 +43,98 @@ const activitySchema = new mongoose.Schema({
   timestamps: true
 });
 
+activitySchema.index({ userId: 1, date: -1 });
+
 const Activity = mongoose.model('Activity', activitySchema);
 
-const getAllActivities = async (query = {}) => {
-  const { userId, type, sortBy = 'date', sortOrder = 'desc', limit = 10, page = 1 } = query;
+const buildActivityFilter = (query = {}) => {
+  const {
+    userId,
+    type,
+    intensity,
+    startDate,
+    endDate,
+    minDuration,
+    maxDuration,
+    search
+  } = query;
 
   const filter = {};
+
   if (userId) filter.userId = userId;
   if (type) filter.type = type;
+  if (intensity) filter.intensity = intensity;
 
-  const sort = {};
-  sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+  if (startDate || endDate) {
+    filter.date = {};
+    if (startDate) filter.date.$gte = new Date(startDate);
+    if (endDate) filter.date.$lte = new Date(endDate);
+  }
 
-  const skip = (page - 1) * limit;
+  if (minDuration || maxDuration) {
+    filter.duration = {};
+    if (minDuration) filter.duration.$gte = Number(minDuration);
+    if (maxDuration) filter.duration.$lte = Number(maxDuration);
+  }
 
-  const activities = await Activity.find(filter)
-    .sort(sort)
-    .skip(skip)
-    .limit(parseInt(limit))
-    .populate('userId', 'username email');
+  if (search) {
+    filter.$or = [
+      { notes: { $regex: search, $options: 'i' } },
+      { type: { $regex: search, $options: 'i' } }
+    ];
+  }
 
-  const total = await Activity.countDocuments(filter);
+  return filter;
+};
+
+const getAllActivities = async (query = {}) => {
+  const {
+    sortBy = 'date',
+    sortOrder = 'desc',
+    limit = 10,
+    page = 1
+  } = query;
+
+  const sanitizedLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
+  const sanitizedPage = Math.max(1, parseInt(page, 10) || 1);
+
+  const filter = buildActivityFilter(query);
+  const sort = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
+  const skip = (sanitizedPage - 1) * sanitizedLimit;
+
+  const [activities, total] = await Promise.all([
+    Activity.find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(sanitizedLimit)
+      .populate('userId', 'username email'),
+    Activity.countDocuments(filter)
+  ]);
 
   return {
     activities,
     total,
-    page: parseInt(page),
-    pages: Math.ceil(total / limit)
+    page: sanitizedPage,
+    pages: Math.ceil(total / sanitizedLimit),
+    limit: sanitizedLimit
   };
 };
 
 const getActivityById = async (id) => {
-  return await Activity.findById(id).populate('userId', 'username email');
+  return Activity.findById(id).populate('userId', 'username email');
 };
 
 const addNewActivity = async (activityData) => {
   const activity = new Activity(activityData);
-  return await activity.save();
+  return activity.save();
 };
 
 const updateExistingActivity = async (id, updateData) => {
-  return await Activity.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+  return Activity.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
 };
 
 const deleteActivity = async (id) => {
-  return await Activity.findByIdAndDelete(id);
+  return Activity.findByIdAndDelete(id);
 };
 
 module.exports = {

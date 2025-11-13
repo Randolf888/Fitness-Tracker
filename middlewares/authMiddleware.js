@@ -1,4 +1,4 @@
-// Authentication middleware (for Phase 3)
+
 const authMiddleware = (req, res, next) => {
   // This would check JWT tokens, sessions, etc.
   const token = req.header('Authorization');
@@ -10,7 +10,7 @@ const authMiddleware = (req, res, next) => {
     });
   }
   
-  // Verify token logic would go here
+
   next();
 };
 

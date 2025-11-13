@@ -1,51 +1,23 @@
 const express = require('express');
-const goalsModel = require('../models/goals.model');
+const {
+  getAllGoals,
+  getGoalById,
+  addNewGoal,
+  updateExistingGoal,
+  deleteGoal
+} = require('../models/goals.model');
 
 const router = express.Router();
 
-const getPaginationParams = (query) => {
-  const page = Math.max(1, parseInt(query.page) || 1);
-  const limit = Math.min(100, parseInt(query.limit) || 10);
-  const skip = (page - 1) * limit;
-  return { page, limit, skip };
-};
-
-// GET all goals with search, sort, and pagination
+// GET all goals with filtering, sorting, and pagination
 router.get('/', async (req, res) => {
   try {
-    const { search, sort } = req.query;
-    const { skip, limit } = getPaginationParams(req.query);
-
-    let query = {};
-    
-    if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
-      ];
-    }
-
-    const sortOptions = sort ? Object.fromEntries(
-      sort.split(',').map(s => [s.startsWith('-') ? s.slice(1) : s, s.startsWith('-') ? -1 : 1])
-    ) : { createdAt: -1 };
-
-    const goals = await goalsModel
-      .find(query)
-      .sort(sortOptions)
-      .skip(skip)
-      .limit(limit);
-
-    const total = await goalsModel.countDocuments(query);
+    const { goals, total, page, pages, limit } = await getAllGoals(req.query);
 
     res.status(200).json({
       success: true,
       data: goals,
-      pagination: {
-        total,
-        page: parseInt(req.query.page) || 1,
-        limit,
-        pages: Math.ceil(total / limit)
-      }
+      pagination: { total, page, pages, limit }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -55,10 +27,12 @@ router.get('/', async (req, res) => {
 // GET goal by ID
 router.get('/:id', async (req, res) => {
   try {
-    const goal = await goalsModel.findById(req.params.id);
+    const goal = await getGoalById(req.params.id);
+
     if (!goal) {
       return res.status(404).json({ success: false, message: 'Goal not found' });
     }
+
     res.status(200).json({ success: true, data: goal });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -68,7 +42,7 @@ router.get('/:id', async (req, res) => {
 // POST create goal
 router.post('/', async (req, res) => {
   try {
-    const goal = await goalsModel.create(req.body);
+    const goal = await addNewGoal(req.body);
     res.status(201).json({ success: true, data: goal });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -78,10 +52,12 @@ router.post('/', async (req, res) => {
 // PUT update goal
 router.put('/:id', async (req, res) => {
   try {
-    const goal = await goalsModel.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const goal = await updateExistingGoal(req.params.id, req.body);
+
     if (!goal) {
       return res.status(404).json({ success: false, message: 'Goal not found' });
     }
+
     res.status(200).json({ success: true, data: goal });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -91,10 +67,12 @@ router.put('/:id', async (req, res) => {
 // DELETE goal
 router.delete('/:id', async (req, res) => {
   try {
-    const goal = await goalsModel.findByIdAndDelete(req.params.id);
+    const goal = await deleteGoal(req.params.id);
+
     if (!goal) {
       return res.status(404).json({ success: false, message: 'Goal not found' });
     }
+
     res.status(200).json({ success: true, message: 'Goal deleted' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

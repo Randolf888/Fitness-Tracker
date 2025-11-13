@@ -1,12 +1,18 @@
 const express = require('express');
-const authModel = require('../models/auth.model');
+const {
+  createUser,
+  findUserByEmail,
+  findUserById,
+  updateUser,
+  deleteUser
+} = require('../models/auth.model');
 
 const router = express.Router();
 
 // POST register
 router.post('/register', async (req, res) => {
   try {
-    const user = await authModel.create(req.body);
+    const user = await createUser(req.body);
     res.status(201).json({ success: true, data: user });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -17,7 +23,7 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await authModel.findOne({ email });
+    const user = await findUserByEmail(email);
     
     if (!user || user.password !== password) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
@@ -32,7 +38,7 @@ router.post('/login', async (req, res) => {
 // GET user by ID
 router.get('/:id', async (req, res) => {
   try {
-    const user = await authModel.findById(req.params.id);
+    const user = await findUserById(req.params.id);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -45,7 +51,7 @@ router.get('/:id', async (req, res) => {
 // PUT update user
 router.put('/:id', async (req, res) => {
   try {
-    const user = await authModel.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const user = await updateUser(req.params.id, req.body);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -58,7 +64,7 @@ router.put('/:id', async (req, res) => {
 // DELETE user
 router.delete('/:id', async (req, res) => {
   try {
-    const user = await authModel.findByIdAndDelete(req.params.id);
+    const user = await deleteUser(req.params.id);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }

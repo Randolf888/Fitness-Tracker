@@ -2,7 +2,11 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    const mongoURI = 'mongodb+srv://basitdada05_db_user:M3JkdtlSbOYVY8kr@cpan212-abdulbasit.gim5kio.mongodb.net/?appName=CPAN212-Abdulbasit';
+    const mongoURI = process.env.MONGO_URI;
+
+    if (!mongoURI) {
+      throw new Error('Missing MONGO_URI. Ensure it is defined in your .env file.');
+    }
 
     await mongoose.connect(mongoURI, {
       useNewUrlParser: true,

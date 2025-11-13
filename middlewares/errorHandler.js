@@ -6,7 +6,7 @@ const errorHandler = (error, req, res, next) => {
   res.status(500).json({
     success: false,
     message: 'Internal server error',
-    // Only show error details in development
+
     error: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
   });
 };

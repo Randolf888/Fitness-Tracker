@@ -1,52 +1,35 @@
 const express = require('express');
-const dashboardModel = require('../models/dashboard.model');
+const {
+  getDashboardWidgets,
+  getDashboardWidgetById,
+  createDashboardWidget,
+  updateDashboardWidget,
+  deleteDashboardWidget,
+  getDashboardData
+} = require('../models/dashboard.model');
 
 const router = express.Router();
 
-const getPaginationParams = (query) => {
-  const page = Math.max(1, parseInt(query.page) || 1);
-  const limit = Math.min(100, parseInt(query.limit) || 10);
-  const skip = (page - 1) * limit;
-  return { page, limit, skip };
-};
-
-// GET dashboard data with search, sort, and pagination
+// GET dashboard widgets with filtering, sorting, and pagination
 router.get('/', async (req, res) => {
   try {
-    const { search, sort } = req.query;
-    const { skip, limit } = getPaginationParams(req.query);
-
-    let query = {};
-    
-    if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { type: { $regex: search, $options: 'i' } }
-      ];
-    }
-
-    const sortOptions = sort ? Object.fromEntries(
-      sort.split(',').map(s => [s.startsWith('-') ? s.slice(1) : s, s.startsWith('-') ? -1 : 1])
-    ) : { createdAt: -1 };
-
-    const dashboard = await dashboardModel
-      .find(query)
-      .sort(sortOptions)
-      .skip(skip)
-      .limit(limit);
-
-    const total = await dashboardModel.countDocuments(query);
+    const { widgets, total, page, pages, limit } = await getDashboardWidgets(req.query);
 
     res.status(200).json({
       success: true,
-      data: dashboard,
-      pagination: {
-        total,
-        page: parseInt(req.query.page) || 1,
-        limit,
-        pages: Math.ceil(total / limit)
-      }
+      data: widgets,
+      pagination: { total, page, pages, limit }
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET aggregated dashboard data for a user
+router.get('/summary/:userId', async (req, res) => {
+  try {
+    const data = await getDashboardData(req.params.userId);
+    res.status(200).json({ success: true, data });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -55,7 +38,7 @@ router.get('/', async (req, res) => {
 // GET dashboard widget by ID
 router.get('/:id', async (req, res) => {
   try {
-    const widget = await dashboardModel.findById(req.params.id);
+    const widget = await getDashboardWidgetById(req.params.id);
     if (!widget) {
       return res.status(404).json({ success: false, message: 'Dashboard widget not found' });
     }
@@ -68,7 +51,7 @@ router.get('/:id', async (req, res) => {
 // POST create dashboard widget
 router.post('/', async (req, res) => {
   try {
-    const widget = await dashboardModel.create(req.body);
+    const widget = await createDashboardWidget(req.body);
     res.status(201).json({ success: true, data: widget });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -78,7 +61,7 @@ router.post('/', async (req, res) => {
 // PUT update dashboard widget
 router.put('/:id', async (req, res) => {
   try {
-    const widget = await dashboardModel.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const widget = await updateDashboardWidget(req.params.id, req.body);
     if (!widget) {
       return res.status(404).json({ success: false, message: 'Dashboard widget not found' });
     }
@@ -91,7 +74,7 @@ router.put('/:id', async (req, res) => {
 // DELETE dashboard widget
 router.delete('/:id', async (req, res) => {
   try {
-    const widget = await dashboardModel.findByIdAndDelete(req.params.id);
+    const widget = await deleteDashboardWidget(req.params.id);
     if (!widget) {
       return res.status(404).json({ success: false, message: 'Dashboard widget not found' });
     }

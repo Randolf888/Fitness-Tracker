@@ -38,52 +38,98 @@ const goalSchema = new mongoose.Schema({
   timestamps: true
 });
 
+goalSchema.index({ userId: 1, deadline: 1 });
+
 const Goal = mongoose.model('Goal', goalSchema);
 
-const getAllGoals = async (query = {}) => {
-  const { userId, type, status, sortBy = 'createdAt', sortOrder = 'desc', limit = 10, page = 1 } = query;
+const buildGoalFilter = (query = {}) => {
+  const {
+    userId,
+    type,
+    status,
+    dueBefore,
+    dueAfter,
+    minCurrent,
+    maxCurrent,
+    search
+  } = query;
 
   const filter = {};
+
   if (userId) filter.userId = userId;
   if (type) filter.type = type;
   if (status) filter.status = status;
 
-  const sort = {};
-  sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+  if (dueBefore || dueAfter) {
+    filter.deadline = {};
+    if (dueAfter) filter.deadline.$gte = new Date(dueAfter);
+    if (dueBefore) filter.deadline.$lte = new Date(dueBefore);
+  }
 
-  const skip = (page - 1) * limit;
+  if (minCurrent || maxCurrent) {
+    filter.current = {};
+    if (minCurrent) filter.current.$gte = Number(minCurrent);
+    if (maxCurrent) filter.current.$lte = Number(maxCurrent);
+  }
 
-  const goals = await Goal.find(filter)
-    .sort(sort)
-    .skip(skip)
-    .limit(parseInt(limit))
-    .populate('userId', 'username email');
+  if (search) {
+    filter.$or = [
+      { description: { $regex: search, $options: 'i' } },
+      { type: { $regex: search, $options: 'i' } }
+    ];
+  }
 
-  const total = await Goal.countDocuments(filter);
+  return filter;
+};
+
+const getAllGoals = async (query = {}) => {
+  const {
+    sortBy = 'createdAt',
+    sortOrder = 'desc',
+    limit = 10,
+    page = 1
+  } = query;
+
+  const sanitizedLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
+  const sanitizedPage = Math.max(1, parseInt(page, 10) || 1);
+
+  const filter = buildGoalFilter(query);
+  const sort = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
+  const skip = (sanitizedPage - 1) * sanitizedLimit;
+
+  const [goals, total] = await Promise.all([
+    Goal.find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(sanitizedLimit)
+      .populate('userId', 'username email'),
+    Goal.countDocuments(filter)
+  ]);
 
   return {
     goals,
     total,
-    page: parseInt(page),
-    pages: Math.ceil(total / limit)
+    page: sanitizedPage,
+    pages: Math.ceil(total / sanitizedLimit),
+    limit: sanitizedLimit
   };
 };
 
 const getGoalById = async (id) => {
-  return await Goal.findById(id).populate('userId', 'username email');
+  return Goal.findById(id).populate('userId', 'username email');
 };
 
 const addNewGoal = async (goalData) => {
   const goal = new Goal(goalData);
-  return await goal.save();
+  return goal.save();
 };
 
 const updateExistingGoal = async (id, updateData) => {
-  return await Goal.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+  return Goal.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
 };
 
 const deleteGoal = async (id) => {
-  return await Goal.findByIdAndDelete(id);
+  return Goal.findByIdAndDelete(id);
 };
 
 module.exports = {

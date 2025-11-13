@@ -28,7 +28,7 @@ const progressSchema = new mongoose.Schema({
     required: true
   },
   date: {
-    type: String,
+    type: Date,
     required: true
   },
   metrics: {
@@ -122,57 +122,99 @@ progressSchema.index({ userId: 1, date: 1 }, { unique: true });
 
 const Progress = mongoose.model('Progress', progressSchema);
 
-const getAllProgress = async (query = {}) => {
-  const { userId, startDate, endDate, sortBy = 'date', sortOrder = 'desc', limit = 10, page = 1 } = query;
+const buildProgressFilter = (query = {}) => {
+  const {
+    userId,
+    startDate,
+    endDate,
+    minSteps,
+    maxSteps,
+    minCaloriesBurned,
+    maxCaloriesBurned,
+    workoutType
+  } = query;
 
   const filter = {};
+
   if (userId) filter.userId = userId;
+
   if (startDate || endDate) {
     filter.date = {};
-    if (startDate) filter.date.$gte = startDate;
-    if (endDate) filter.date.$lte = endDate;
+    if (startDate) filter.date.$gte = new Date(startDate);
+    if (endDate) filter.date.$lte = new Date(endDate);
   }
 
-  const sort = {};
-  sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+  if (minSteps || maxSteps) {
+    filter['metrics.steps'] = {};
+    if (minSteps) filter['metrics.steps'].$gte = Number(minSteps);
+    if (maxSteps) filter['metrics.steps'].$lte = Number(maxSteps);
+  }
 
-  const skip = (page - 1) * limit;
+  if (minCaloriesBurned || maxCaloriesBurned) {
+    filter['metrics.caloriesBurned'] = {};
+    if (minCaloriesBurned) filter['metrics.caloriesBurned'].$gte = Number(minCaloriesBurned);
+    if (maxCaloriesBurned) filter['metrics.caloriesBurned'].$lte = Number(maxCaloriesBurned);
+  }
 
-  const progress = await Progress.find(filter)
-    .sort(sort)
-    .skip(skip)
-    .limit(parseInt(limit))
-    .populate('userId', 'username email');
+  if (workoutType) {
+    filter['workouts.type'] = workoutType;
+  }
 
-  const total = await Progress.countDocuments(filter);
+  return filter;
+};
+
+const getAllProgress = async (query = {}) => {
+  const {
+    sortBy = 'date',
+    sortOrder = 'desc',
+    limit = 10,
+    page = 1
+  } = query;
+
+  const sanitizedLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
+  const sanitizedPage = Math.max(1, parseInt(page, 10) || 1);
+
+  const filter = buildProgressFilter(query);
+  const sort = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
+  const skip = (sanitizedPage - 1) * sanitizedLimit;
+
+  const [progress, total] = await Promise.all([
+    Progress.find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(sanitizedLimit)
+      .populate('userId', 'username email'),
+    Progress.countDocuments(filter)
+  ]);
 
   return {
     progress,
     total,
-    page: parseInt(page),
-    pages: Math.ceil(total / limit)
+    page: sanitizedPage,
+    pages: Math.ceil(total / sanitizedLimit),
+    limit: sanitizedLimit
   };
 };
 
 const getProgressByDate = async (date, userId) => {
-  return await Progress.findOne({ date, userId }).populate('userId', 'username email');
+  return Progress.findOne({ date: new Date(date), userId }).populate('userId', 'username email');
 };
 
 const getProgressById = async (id) => {
-  return await Progress.findById(id).populate('userId', 'username email');
+  return Progress.findById(id).populate('userId', 'username email');
 };
 
 const addProgress = async (progressData) => {
   const progress = new Progress(progressData);
-  return await progress.save();
+  return progress.save();
 };
 
 const updateProgress = async (id, updateData) => {
-  return await Progress.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+  return Progress.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
 };
 
 const deleteProgress = async (id) => {
-  return await Progress.findByIdAndDelete(id);
+  return Progress.findByIdAndDelete(id);
 };
 
 module.exports = {

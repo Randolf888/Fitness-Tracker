@@ -1,50 +1,88 @@
 const mongoose = require('mongoose');
 
-// Note: Profile data is embedded in the User model, so we use the User model directly
-const { User } = require('../auth/models/auth.model');
+const profileSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    unique: true
+  },
+  age: {
+    type: Number,
+    min: 13,
+    max: 120
+  },
+  weight: {
+    type: Number,
+    min: 30,
+    max: 500
+  },
+  height: {
+    type: Number,
+    min: 50,
+    max: 250
+  },
+  fitnessLevel: {
+    type: String,
+    enum: ['beginner', 'intermediate', 'advanced'],
+    default: 'beginner'
+  },
+  bio: {
+    type: String,
+    maxlength: 500
+  },
+  preferences: {
+    notifications: {
+      type: Boolean,
+      default: true
+    },
+    workoutTypes: {
+      type: [String],
+      default: []
+    }
+  }
+}, {
+  timestamps: true
+});
 
-const getUserProfile = async (userId) => {
-  const user = await User.findById(userId).select('-password');
-  if (!user) return null;
+profileSchema.index({ userId: 1 });
 
-  return {
-    id: user._id,
-    username: user.username,
-    email: user.email,
-    profile: user.profile || {},
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt
-  };
+const Profile = mongoose.model('Profile', profileSchema);
+
+const getProfileByUserId = async (userId) => {
+  return Profile.findOne({ userId }).populate('userId', 'username email');
 };
 
-const updateUserProfile = async (userId, updateData) => {
-  const allowedUpdates = ['username', 'email', 'profile'];
-  const updates = {};
+const createProfile = async (profileData) => {
+  const profile = new Profile(profileData);
+  return profile.save();
+};
 
-  allowedUpdates.forEach(field => {
-    if (updateData[field] !== undefined) {
-      updates[field] = updateData[field];
-    }
-  });
+const updateProfile = async (userId, updateData) => {
+  return Profile.findOneAndUpdate(
+    { userId },
+    updateData,
+    { new: true, runValidators: true }
+  ).populate('userId', 'username email');
+};
 
-  const user = await User.findByIdAndUpdate(userId, updates, {
-    new: true,
-    runValidators: true
-  }).select('-password');
+const upsertProfile = async (userId, updateData) => {
+  return Profile.findOneAndUpdate(
+    { userId },
+    updateData,
+    { new: true, runValidators: true, upsert: true }
+  ).populate('userId', 'username email');
+};
 
-  if (!user) return null;
-
-  return {
-    id: user._id,
-    username: user.username,
-    email: user.email,
-    profile: user.profile || {},
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt
-  };
+const deleteProfile = async (userId) => {
+  return Profile.findOneAndDelete({ userId });
 };
 
 module.exports = {
-  getUserProfile,
-  updateUserProfile
+  Profile,
+  getProfileByUserId,
+  createProfile,
+  updateProfile,
+  upsertProfile,
+  deleteProfile
 };
