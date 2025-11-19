@@ -64,7 +64,7 @@ In Phase 3, the app was upgraded from JSON-based data to a real MongoDB Atlas da
 - Added **dotenv** as a dev dependency and loaded it in `App.js`:
   - `require('dotenv').config();`
 - Configured **MongoDB Atlas connection string** via `.env`:
-  - `MONGO_URI=your-mongodb-atlas-connection-string`
+  - `MONGO_URI=mongodb-atlas-connection-string`
 - Ensured `.env` is **ignored in Git** using `.gitignore` so credentials are never pushed.
 
 ### 2. Database Connection Middleware
