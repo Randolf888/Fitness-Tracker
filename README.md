@@ -9,8 +9,16 @@
 
 ## 🧩 Phase Overview
 
-- **Current Phase:** Phase 3 – Database Integration with MongoDB Atlas
-- **Previous Phase:** Phase 2 – Modular Express.js Architecture (feature-based modules and JSON-powered API)
+- **Current Phase:** Phase 4 – React Frontend Integration + API wiring
+- **Previous Phase:** Phase 3 – Database Integration with MongoDB Atlas (after Phase 2’s modular Express API)
+
+### Folder Layout (Phase 4)
+
+```
+Fitness-Tracker/
+├── backend/   # Express + MongoDB API (App.js, modules, middlewares)
+└── frontend/  # React + Vite app (Auth, Activities UI)
+```
 
 ---
 
@@ -142,6 +150,30 @@ You can manually test CRUD and query behavior for each module using Postman:
 
 ---
 
+## 🖥️ Phase 4 – React Frontend Integration
+
+- Built a new React app under `frontend/` with **React Router** layout and navigation (Home, Auth, Activities).
+- Added a shared **Axios client** with environment-driven base URL (`VITE_API_BASE_URL`) and enabled backend **CORS** via `CLIENT_URL`.
+- Implemented **Auth page** (login/register) with client-side validation (email pattern, password length, username length) and inline success/error banners.
+- Implemented **Activity CRUD UI**: create, edit, delete, and list activities filtered by the logged-in user; supports search and intensity filters.
+- Added **client-side validation** for activity forms (required fields, numeric constraints, date required) and user-friendly success/error feedback after each operation.
+- Responsive, non-default visual style (Space Grotesk + Manrope fonts, gradients, cards) that works on desktop and mobile.
+
+### Frontend structure
+
+```
+frontend/
+├── src/
+│   ├── api/ (axios client, auth + activity endpoints)
+│   ├── components/ (layout, activity form/list)
+│   ├── context/AuthContext.jsx (user state + localStorage)
+│   ├── pages/ (Home, Auth, Activities)
+│   └── App.jsx, main.jsx, styles
+└── package.json
+```
+
+---
+
 ## 🔗 API Routes Implemented (High-Level)
 
 ### Authentication Routes
@@ -187,6 +219,7 @@ To ensure clear responsibilities during development, the tasks have been divided
 2. Created and validated the goal management module, including setting, updating and deleting goals.
 3. Implemented the profile update feature along with validation rules for profile fields.
 4. Set up application‑level middleware (JSON parsing, URL encoding, 404 and error handling) and structured the project using feature‑based modules.
+5. Phase 4: Built the React auth screen, user context/localStorage, client-side validation, and updated documentation for the frontend stack.
 
 - `Randolf`:
 
@@ -194,22 +227,35 @@ To ensure clear responsibilities during development, the tasks have been divided
 2. Developed the progress tracking module, including endpoints to fetch progress by ID or date and update progress records.
 3. Built the dashboard module and summarised user activities, goals and progress for the dashboard endpoint.
 4. Led the Phase 3 database integration work, including MongoDB Atlas connection, Mongoose schemas/models, and search/sort/pagination logic across modules.
+5. Phase 4: Implemented the React activity CRUD UI (listing, filters, create/edit/delete wiring to the API) and frontend styling/layout.
 
 ## ⚡ Setup Instructions
 
+### Backend (Express + MongoDB)
+
 ```bash
-# Install dependencies
+# from project root
+cd backend
 npm install
 
-# Create a .env file in the project root
-# and add your MongoDB Atlas connection string:
-# MONGO_URI=your-mongodb-atlas-uri
+# .env in backend/
+MONGO_URI=your-mongodb-atlas-uri
+PORT=3000
+CLIENT_URL=http://localhost:5173  # allowed origin for the React app
 
-# Optionally specify a custom port (defaults to 3000)
-# PORT=3000
+# start the API
+npm start
+```
 
-# Start the server (development)
-node App.js
+### Frontend (React + Vite)
 
-# Server runs on http://localhost:3000
+```bash
+cd frontend
+npm install
+
+# point to the running backend (defaults to 3000 if omitted)
+VITE_API_BASE_URL=http://localhost:3000 npm run dev
+
+# production build
+npm run build
 ```

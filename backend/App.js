@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const express = require('express');
 const app = express();
+const cors = require('cors');
 const port = process.env.PORT || 3000;
 
 // Import middlewares
@@ -13,6 +14,9 @@ const connectDB = require('./shared/middlewares/connect-db');
 connectDB();
 
 // 1. Application-level middlewares FIRST
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:5173'
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

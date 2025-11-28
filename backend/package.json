@@ -2,8 +2,9 @@
   "name": "fitness-tracker",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "App.js",
   "scripts": {
+    "start": "node App.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -19,6 +20,7 @@
   },
   "homepage": "https://github.com/Randolf888/Fitness-Tracker#readme",
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^5.1.0",
     "express-validator": "^7.2.1",
     "mongoose": "^8.0.0"
