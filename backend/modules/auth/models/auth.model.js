@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
   username: {
@@ -20,7 +21,14 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true,
-    minlength: 6
+    minlength: 6,
+    select: false
+  },
+  role: {
+    type: String,
+    enum: ['admin', 'customer'],
+    required: true,
+    default: 'customer'
   },
   profile: {
     age: {
@@ -48,10 +56,35 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
+userSchema.pre('save', async function hashPassword(next) {
+  if (!this.isModified('password')) return next();
+
+  try {
+    this.password = await bcrypt.hash(this.password, 10);
+    return next();
+  } catch (err) {
+    return next(err);
+  }
+});
+
+userSchema.methods.comparePassword = function comparePassword(candidate) {
+  return bcrypt.compare(candidate, this.password);
+};
+
+userSchema.methods.toJSON = function toJSON() {
+  const obj = this.toObject();
+  delete obj.password;
+  return obj;
+};
+
 const User = mongoose.model('User', userSchema);
 
-const findUserByEmail = async (email) => {
-  return await User.findOne({ email });
+const findUserByEmail = async (email, options = {}) => {
+  const query = User.findOne({ email });
+  if (options.includePassword) {
+    query.select('+password');
+  }
+  return query;
 };
 
 const findUserById = async (id) => {
@@ -68,7 +101,13 @@ const findUserByUsername = async (username) => {
 };
 
 const updateUser = async (id, updateData) => {
-  return await User.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+  const changes = { ...updateData };
+
+  if (changes.password) {
+    changes.password = await bcrypt.hash(changes.password, 10);
+  }
+
+  return await User.findByIdAndUpdate(id, changes, { new: true, runValidators: true });
 };
 
 const deleteUser = async (id) => {

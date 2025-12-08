@@ -8,6 +8,23 @@ const client = axios.create({
   timeout: 12000
 });
 
+client.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('fitlog-session');
+      if (stored) {
+        const { token } = JSON.parse(stored);
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+      }
+    } catch (_) {
+      // Ignore malformed session data in storage
+    }
+  }
+  return config;
+});
+
 client.interceptors.response.use(
   (response) => response,
   (error) => {

@@ -2,31 +2,51 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 const AuthContext = createContext({
   user: null,
+  token: null,
   isAuthenticated: false,
-  saveUser: () => {},
+  saveSession: () => {},
   logout: () => {}
 });
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    const stored = localStorage.getItem('fitlog-user');
-    return stored ? JSON.parse(stored) : null;
+  const [session, setSession] = useState(() => {
+    const stored = localStorage.getItem('fitlog-session');
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch (_) {
+        return { user: null, token: null };
+      }
+    }
+
+    const legacyUser = localStorage.getItem('fitlog-user');
+    if (legacyUser) {
+      try {
+        return { user: JSON.parse(legacyUser), token: null };
+      } catch (_) {
+        return { user: null, token: null };
+      }
+    }
+
+    return { user: null, token: null };
   });
 
   useEffect(() => {
-    if (user) {
-      localStorage.setItem('fitlog-user', JSON.stringify(user));
+    if (session?.user || session?.token) {
+      localStorage.setItem('fitlog-session', JSON.stringify(session));
     } else {
-      localStorage.removeItem('fitlog-user');
+      localStorage.removeItem('fitlog-session');
     }
-  }, [user]);
+    localStorage.removeItem('fitlog-user');
+  }, [session]);
 
   const value = useMemo(() => ({
-    user,
-    isAuthenticated: Boolean(user),
-    saveUser: setUser,
-    logout: () => setUser(null)
-  }), [user]);
+    user: session?.user || null,
+    token: session?.token || null,
+    isAuthenticated: Boolean(session?.token),
+    saveSession: (user, token) => setSession({ user, token }),
+    logout: () => setSession({ user: null, token: null })
+  }), [session]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

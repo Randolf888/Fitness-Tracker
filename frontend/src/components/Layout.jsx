@@ -15,7 +15,7 @@ const Layout = () => {
       <header className="topbar">
         <div className="brand">
           <Link to="/">FitLog Pro</Link>
-          <span className="badge">Phase 4</span>
+          <span className="badge">Phase 5</span>
         </div>
 
         <nav className="nav-links">

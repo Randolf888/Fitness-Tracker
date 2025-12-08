@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login, register } from '../api/auth';
+import { login, register, verifyLogin } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
 
 const initialForm = { username: '', email: '', password: '' };
@@ -8,11 +8,14 @@ const initialForm = { username: '', email: '', password: '' };
 const Auth = () => {
   const [mode, setMode] = useState('login');
   const [form, setForm] = useState(initialForm);
+  const [otp, setOtp] = useState('');
+  const [awaitingOtp, setAwaitingOtp] = useState(false);
+  const [pendingLogin, setPendingLogin] = useState(null);
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { saveUser } = useAuth();
+  const { saveSession } = useAuth();
 
   const validate = () => {
     const next = {};
@@ -24,8 +27,13 @@ const Auth = () => {
       next.email = 'Enter a valid email address.';
     }
 
-    if (form.password.length < 6) {
+    const needsPassword = mode === 'register' || !awaitingOtp;
+    if (needsPassword && form.password.length < 6) {
       next.password = 'Password must be at least 6 characters.';
+    }
+
+    if (mode === 'login' && awaitingOtp && otp.trim().length !== 6) {
+      next.otp = 'Enter the 6-digit code sent to your email.';
     }
 
     return next;
@@ -41,12 +49,34 @@ const Auth = () => {
     setStatus(null);
 
     try {
-      const payload = { ...form };
-      const user = mode === 'login' ? await login(payload) : await register(payload);
-      saveUser(user);
-      setStatus({ type: 'success', message: `Welcome, ${user.username || 'athlete'}!` });
-      setForm(initialForm);
-      navigate('/activities');
+      if (mode === 'register') {
+        const { message } = await register({ ...form });
+        setStatus({ type: 'success', message: message || 'Account created. Please login to continue.' });
+        setForm(initialForm);
+        setOtp('');
+        setAwaitingOtp(false);
+        setPendingLogin(null);
+        setMode('login');
+        return;
+      }
+
+      if (awaitingOtp) {
+        const email = pendingLogin?.email || form.email;
+        const { user, token } = await verifyLogin({ email, otp: otp.trim() });
+        saveSession(user, token);
+        setStatus({ type: 'success', message: 'Login verified. Redirecting to activities...' });
+        setForm(initialForm);
+        setOtp('');
+        setAwaitingOtp(false);
+        setPendingLogin(null);
+        navigate('/activities');
+        return;
+      }
+
+      await login({ email: form.email, password: form.password });
+      setPendingLogin({ email: form.email, password: form.password });
+      setAwaitingOtp(true);
+      setStatus({ type: 'success', message: 'OTP sent to your email. Enter it below to finish login.' });
     } catch (err) {
       setStatus({ type: 'error', message: err.message || 'Unable to authenticate right now.' });
     } finally {
@@ -59,6 +89,25 @@ const Auth = () => {
     setForm(initialForm);
     setErrors({});
     setStatus(null);
+    setAwaitingOtp(false);
+    setOtp('');
+    setPendingLogin(null);
+  };
+
+  const handleResendOtp = async () => {
+    if (!pendingLogin) return;
+
+    setLoading(true);
+    setStatus(null);
+
+    try {
+      await login(pendingLogin);
+      setStatus({ type: 'success', message: 'New OTP sent to your email.' });
+    } catch (err) {
+      setStatus({ type: 'error', message: err.message || 'Unable to resend code right now.' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -68,7 +117,7 @@ const Auth = () => {
           <div>
             <p className="eyebrow">Account</p>
             <h2>{mode === 'login' ? 'Login' : 'Create account'}</h2>
-            <p className="muted">Authenticate against the Express API; no mock data.</p>
+            <p className="muted">Email/password plus OTP verification and JWT-backed sessions.</p>
           </div>
           <div className="tab">
             <button className={mode === 'login' ? 'chip active' : 'chip'} onClick={() => switchMode('login')}>
@@ -105,36 +154,66 @@ const Auth = () => {
             <span>Email</span>
             <input
               type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              value={pendingLogin?.email || form.email}
+              onChange={(e) => !awaitingOtp && setForm({ ...form, email: e.target.value })}
               placeholder="you@example.com"
               required
+              disabled={awaitingOtp}
             />
+            {awaitingOtp && <small className="muted">We sent a code to this address.</small>}
             {errors.email && <small className="error">{errors.email}</small>}
           </label>
 
-          <label>
-            <span>Password</span>
-            <input
-              type="password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder="At least 6 characters"
-              required
-            />
-            {errors.password && <small className="error">{errors.password}</small>}
-          </label>
+          {mode === 'login' && awaitingOtp ? (
+            <label>
+              <span>One-time password</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                maxLength="6"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                placeholder="Enter 6-digit code"
+                required
+                autoComplete="one-time-code"
+              />
+              {errors.otp && <small className="error">{errors.otp}</small>}
+            </label>
+          ) : (
+            <label>
+              <span>Password</span>
+              <input
+                type="password"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                placeholder="At least 6 characters"
+                required
+              />
+              {errors.password && <small className="error">{errors.password}</small>}
+            </label>
+          )}
 
           <div className="actions">
             <button type="submit" className="primary" disabled={loading}>
-              {loading ? 'Please wait...' : mode === 'login' ? 'Login' : 'Register'}
+              {loading ? 'Please wait...' : mode === 'register' ? 'Register' : awaitingOtp ? 'Verify OTP' : 'Send OTP'}
             </button>
+            {awaitingOtp && (
+              <>
+                <button type="button" className="ghost" onClick={handleResendOtp} disabled={loading}>
+                  Resend code
+                </button>
+                <button type="button" className="ghost" onClick={() => switchMode('login')} disabled={loading}>
+                  Use a different account
+                </button>
+              </>
+            )}
           </div>
         </form>
 
         <p className="muted small">
-          Client-side validation checks email format, password length, and (for registration) username length
-          before calling the API.
+          Secure login now uses email + password plus a 6-digit OTP. Successful verification stores a JWT for
+          authenticated API calls.
         </p>
       </div>
     </div>
