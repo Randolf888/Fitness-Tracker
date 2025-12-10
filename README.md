@@ -174,6 +174,17 @@ frontend/
 
 ---
 
+## 🔒 Phase 5 – Security, RBAC, and Email MFA
+
+- Implemented **email + password login with OTP MFA**: login triggers a 6-digit OTP emailed via Nodemailer; verification issues the JWT.
+- Added **JWT-based auth middleware** with session storage on the frontend (interceptor injects `Authorization: Bearer <token>` into protected calls).
+- Enforced **role-based access control** (RBAC) across routes using `authorize('admin', 'customer')`; admin-only APIs include user listing/stats and moderation features.
+- Protected UI: signed-in users are redirected away from auth, and admin-only nav/routes are hidden for non-admins.
+- Hardened token handling: user context persists tokens in storage, logout clears session, and protected API calls fail closed with meaningful errors.
+- Tested flows: valid/invalid logins, OTP failures/expiry, protected route access without tokens, role-mismatch denials, and UI visibility for restricted features.
+
+---
+
 ## 🔗 API Routes Implemented (High-Level)
 
 ### Authentication Routes
@@ -220,6 +231,7 @@ To ensure clear responsibilities during development, the tasks have been divided
 3. Implemented the profile update feature along with validation rules for profile fields.
 4. Set up application‑level middleware (JSON parsing, URL encoding, 404 and error handling) and structured the project using feature‑based modules.
 5. Phase 4: Built the React auth screen, user context/localStorage, client-side validation, and updated documentation for the frontend stack.
+6. Phase 5: Led authentication hardening—email+password login with OTP verification, JWT issuance, and frontend session/redirect handling; updated README for the security phase.
 
 - `Randolf`:
 
@@ -228,6 +240,7 @@ To ensure clear responsibilities during development, the tasks have been divided
 3. Built the dashboard module and summarised user activities, goals and progress for the dashboard endpoint.
 4. Led the Phase 3 database integration work, including MongoDB Atlas connection, Mongoose schemas/models, and search/sort/pagination logic across modules.
 5. Phase 4: Implemented the React activity CRUD UI (listing, filters, create/edit/delete wiring to the API) and frontend styling/layout.
+6. Phase 5: Implemented RBAC checks and admin protections on API routes (users, stats, activity moderation), ensured JWT guardrails on protected endpoints, and validated multi-role access rules.
 
 ## ⚡ Setup Instructions
 
