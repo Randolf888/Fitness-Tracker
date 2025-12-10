@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login, register, verifyLogin } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
@@ -15,7 +15,14 @@ const Auth = () => {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { saveSession } = useAuth();
+  const { saveSession, isAuthenticated } = useAuth();
+
+  // If already signed in, skip the auth screen.
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/activities', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const validate = () => {
     const next = {};

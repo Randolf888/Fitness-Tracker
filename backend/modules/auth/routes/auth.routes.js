@@ -4,6 +4,8 @@ const { randomNumberOfNDigits } = require('../../../shared/compute-utils');
 const { sendEmail } = require('../../../shared/email-utils');
 const { encodeToken } = require('../../../shared/jwt-utils');
 const {
+  listUsers,
+  getUserStats,
   createUser,
   findUserByEmail,
   findUserById,
@@ -12,6 +14,7 @@ const {
 } = require('../models/auth.model');
 const { saveOTP, findOTPByEmail, deleteOTPById } = require('../models/otp.model');
 const { authenticate, authorize } = require('../../../middlewares/authMiddleware');
+const { Activity } = require('../../activities/models/activities.model');
 
 const router = express.Router();
 
@@ -141,6 +144,47 @@ router.post('/verify-login', async (req, res) => {
 // Protect the remaining user routes
 router.use(authenticate);
 router.use(authorize('admin', 'customer'));
+
+// Admin-only: list users with search and pagination
+router.get('/users', authorize('admin'), async (req, res) => {
+  try {
+    const { search, role, page, limit, sortBy, sortOrder } = req.query;
+    const result = await listUsers({ search, role, page, limit, sortBy, sortOrder });
+
+    res.status(200).json({
+      success: true,
+      data: result.users,
+      pagination: {
+        total: result.total,
+        page: result.page,
+        pages: result.pages,
+        limit: result.limit
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Admin-only: basic system stats for dashboards
+router.get('/stats', authorize('admin'), async (req, res) => {
+  try {
+    const [userStats, totalActivities] = await Promise.all([
+      getUserStats(),
+      Activity.countDocuments()
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        ...userStats,
+        totalActivities
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 // GET user by ID
 router.get('/:id', async (req, res) => {

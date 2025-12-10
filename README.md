@@ -59,7 +59,7 @@ During Phase 2, the focus was on structuring the backend into clear, modular Exp
 - Added **authentication flows** (login, register, logout) and basic profile endpoints.
 - Built a **dashboard endpoint** to expose activity and progress summaries.
 - Wired up **application-level middleware** for JSON parsing, URL encoding, 404 handling, and centralized error handling.
-- Defined **validation rules** for incoming payloads using `express-validator` and custom middleware.
+- Defined **validation rules** for incoming payloads through Mongoose schemas and lightweight middleware.
 
 ---
 

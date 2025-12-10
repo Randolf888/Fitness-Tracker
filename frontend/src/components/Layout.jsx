@@ -21,7 +21,12 @@ const Layout = () => {
         <nav className="nav-links">
           <NavLink to="/" end className={({ isActive }) => isActive ? 'active' : undefined}>Home</NavLink>
           <NavLink to="/activities" className={({ isActive }) => isActive ? 'active' : undefined}>Activities</NavLink>
-          <NavLink to="/auth" className={({ isActive }) => isActive ? 'active' : undefined}>Auth</NavLink>
+          {user?.role === 'admin' && (
+            <NavLink to="/admin" className={({ isActive }) => isActive ? 'active' : undefined}>Admin</NavLink>
+          )}
+          {!isAuthenticated && (
+            <NavLink to="/auth" className={({ isActive }) => isActive ? 'active' : undefined}>Auth</NavLink>
+          )}
         </nav>
 
         <div className="user-meta">
@@ -32,10 +37,11 @@ const Layout = () => {
                 <div>
                   <p className="user-name">{user.username || 'User'}</p>
                   <p className="user-email">{user.email}</p>
+                  {user.role && <span className="role-chip">{user.role}</span>}
                 </div>
               </div>
               <button className="ghost" onClick={handleLogout}>
-                Logout
+                Switch account
               </button>
             </>
           ) : (

@@ -196,10 +196,6 @@ const getAllProgress = async (query = {}) => {
   };
 };
 
-const getProgressByDate = async (date, userId) => {
-  return Progress.findOne({ date: new Date(date), userId }).populate('userId', 'username email');
-};
-
 const getProgressById = async (id) => {
   return Progress.findById(id).populate('userId', 'username email');
 };
@@ -220,7 +216,6 @@ const deleteProgress = async (id) => {
 module.exports = {
   Progress,
   getAllProgress,
-  getProgressByDate,
   getProgressById,
   addProgress,
   updateProgress,

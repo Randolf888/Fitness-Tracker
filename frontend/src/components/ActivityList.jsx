@@ -1,4 +1,4 @@
-const ActivityList = ({ items, onEdit, onDelete }) => {
+const ActivityList = ({ items, onEdit, onDelete, showUser = false }) => {
   if (!items.length) {
     return (
       <div className="panel">
@@ -10,41 +10,58 @@ const ActivityList = ({ items, onEdit, onDelete }) => {
 
   return (
     <div className="activity-grid">
-      {items.map((activity) => (
-        <article className="activity-card" key={activity._id}>
-          <div className="card-header">
-            <div>
-              <p className="eyebrow">{new Date(activity.date).toLocaleDateString()}</p>
-              <h4>{activity.type}</h4>
-            </div>
-            <span className="pill">{activity.intensity}</span>
-          </div>
+      {items.map((activity) => {
+        const ownerName = typeof activity.userId === 'string'
+          ? activity.userId
+          : activity.userId?.username || activity.userId?.email || 'Unknown user';
+        const ownerEmail = typeof activity.userId === 'object' ? activity.userId?.email : '';
 
-          <dl className="stats">
-            <div>
-              <dt>Duration</dt>
-              <dd>{activity.duration} min</dd>
-            </div>
-            <div>
-              <dt>Calories</dt>
-              <dd>{activity.calories} kcal</dd>
-            </div>
-            {activity.distance !== undefined && activity.distance !== null && (
+        return (
+          <article className="activity-card" key={activity._id}>
+            <div className="card-header">
               <div>
-                <dt>Distance</dt>
-                <dd>{activity.distance} km</dd>
+                <p className="eyebrow">{new Date(activity.date).toLocaleDateString()}</p>
+                <h4>{activity.type}</h4>
+              </div>
+              <span className="pill">{activity.intensity}</span>
+            </div>
+
+            {showUser && (
+              <div className="owner-row">
+                <p className="eyebrow">User</p>
+                <div className="owner-meta">
+                  <p className="owner-name">{ownerName}</p>
+                  {ownerEmail && <p className="muted small">{ownerEmail}</p>}
+                </div>
               </div>
             )}
-          </dl>
 
-          {activity.notes && <p className="notes">{activity.notes}</p>}
+            <dl className="stats">
+              <div>
+                <dt>Duration</dt>
+                <dd>{activity.duration} min</dd>
+              </div>
+              <div>
+                <dt>Calories</dt>
+                <dd>{activity.calories} kcal</dd>
+              </div>
+              {activity.distance !== undefined && activity.distance !== null && (
+                <div>
+                  <dt>Distance</dt>
+                  <dd>{activity.distance} km</dd>
+                </div>
+              )}
+            </dl>
 
-          <div className="card-actions">
-            <button className="ghost" onClick={() => onEdit(activity)}>Edit</button>
-            <button className="danger" onClick={() => onDelete(activity._id)}>Delete</button>
-          </div>
-        </article>
-      ))}
+            {activity.notes && <p className="notes">{activity.notes}</p>}
+
+            <div className="card-actions">
+              <button className="ghost" onClick={() => onEdit(activity)}>Edit</button>
+              <button className="danger" onClick={() => onDelete(activity._id)}>Delete</button>
+            </div>
+          </article>
+        );
+      })}
     </div>
   );
 };

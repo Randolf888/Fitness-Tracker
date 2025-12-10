@@ -79,6 +79,76 @@ userSchema.methods.toJSON = function toJSON() {
 
 const User = mongoose.model('User', userSchema);
 
+const buildUserFilter = (query = {}) => {
+  const { search, role } = query;
+  const filter = {};
+
+  if (role) {
+    filter.role = role;
+  }
+
+  if (search) {
+    filter.$or = [
+      { username: { $regex: search, $options: 'i' } },
+      { email: { $regex: search, $options: 'i' } }
+    ];
+  }
+
+  return filter;
+};
+
+const listUsers = async (query = {}) => {
+  const {
+    search,
+    role,
+    sortBy = 'createdAt',
+    sortOrder = 'desc',
+    limit = 10,
+    page = 1
+  } = query;
+
+  const sanitizedLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
+  const sanitizedPage = Math.max(1, parseInt(page, 10) || 1);
+  const skip = (sanitizedPage - 1) * sanitizedLimit;
+
+  const filter = buildUserFilter({ search, role });
+  const sort = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
+
+  const [users, total] = await Promise.all([
+    User.find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(sanitizedLimit),
+    User.countDocuments(filter)
+  ]);
+
+  return {
+    users,
+    total,
+    page: sanitizedPage,
+    pages: Math.ceil(total / sanitizedLimit),
+    limit: sanitizedLimit
+  };
+};
+
+const getUserStats = async () => {
+  const totalUsers = await User.countDocuments();
+  const roleBreakdown = await User.aggregate([
+    { $group: { _id: '$role', count: { $sum: 1 } } }
+  ]);
+
+  const roleCounts = roleBreakdown.reduce((acc, role) => {
+    acc[role._id] = role.count;
+    return acc;
+  }, {});
+
+  return {
+    totalUsers,
+    admins: roleCounts.admin || 0,
+    customers: roleCounts.customer || 0
+  };
+};
+
 const findUserByEmail = async (email, options = {}) => {
   const query = User.findOne({ email });
   if (options.includePassword) {
@@ -94,10 +164,6 @@ const findUserById = async (id) => {
 const createUser = async (userData) => {
   const user = new User(userData);
   return await user.save();
-};
-
-const findUserByUsername = async (username) => {
-  return await User.findOne({ username });
 };
 
 const updateUser = async (id, updateData) => {
@@ -116,10 +182,11 @@ const deleteUser = async (id) => {
 
 module.exports = {
   User,
+  listUsers,
+  getUserStats,
   findUserByEmail,
   findUserById,
   createUser,
-  findUserByUsername,
   updateUser,
   deleteUser
 };

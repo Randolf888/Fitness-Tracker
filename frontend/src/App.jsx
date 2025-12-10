@@ -3,6 +3,7 @@ import Layout from './components/Layout';
 import Activities from './pages/Activities';
 import Auth from './pages/Auth';
 import Home from './pages/Home';
+import Admin from './pages/Admin';
 import './App.css';
 
 const App = () => (
@@ -11,6 +12,7 @@ const App = () => (
       <Route element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/admin" element={<Admin />} />
         <Route path="/activities" element={<Activities />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

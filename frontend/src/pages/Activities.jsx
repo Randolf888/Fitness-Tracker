@@ -114,6 +114,7 @@ const Activities = () => {
           <ActivityForm
             userId={user?._id}
             initialData={editing}
+            isAdmin={user?.role === 'admin'}
             onSubmit={handleSave}
             onCancel={() => setEditing(null)}
           />

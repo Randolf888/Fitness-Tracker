@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 const typeOptions = ['running', 'walking', 'cycling', 'swimming', 'weightlifting', 'yoga', 'other'];
 const intensityOptions = ['low', 'moderate', 'high'];
 
-const createDefaultForm = () => ({
+const createDefaultForm = (userId = '') => ({
+  userId,
   type: 'running',
   duration: '',
   calories: '',
@@ -13,14 +14,15 @@ const createDefaultForm = () => ({
   notes: ''
 });
 
-const ActivityForm = ({ userId, initialData, onSubmit, onCancel }) => {
-  const [form, setForm] = useState(createDefaultForm());
+const ActivityForm = ({ userId, initialData, onSubmit, onCancel, isAdmin = false, userOptions = [] }) => {
+  const [form, setForm] = useState(createDefaultForm(userId));
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (initialData) {
       setForm({
+        userId: initialData.userId?._id || initialData.userId || userId || '',
         type: initialData.type || 'running',
         duration: initialData.duration ?? '',
         calories: initialData.calories ?? '',
@@ -30,14 +32,23 @@ const ActivityForm = ({ userId, initialData, onSubmit, onCancel }) => {
         notes: initialData.notes || ''
       });
     } else {
-      setForm(createDefaultForm());
+      setForm(createDefaultForm(userId));
     }
-  }, [initialData]);
+  }, [initialData, userId]);
+
+  const resolveUserId = () => {
+    if (isAdmin) {
+      return form.userId || initialData?.userId?._id || initialData?.userId || userId || '';
+    }
+    return userId;
+  };
 
   const validate = () => {
     const nextErrors = {};
 
-    if (!userId) nextErrors.user = 'Login first to link activities to your account.';
+    if (!resolveUserId()) {
+      nextErrors.user = isAdmin ? 'Pick which user owns this activity.' : 'Login first to link activities to your account.';
+    }
     if (!form.type) nextErrors.type = 'Choose an activity type.';
 
     if (form.duration === '' || Number(form.duration) <= 0) {
@@ -63,9 +74,10 @@ const ActivityForm = ({ userId, initialData, onSubmit, onCancel }) => {
 
     setSubmitting(true);
     try {
+      const targetUserId = resolveUserId();
       const payload = {
         ...form,
-        userId,
+        userId: targetUserId,
         duration: Number(form.duration),
         calories: Number(form.calories),
         distance: form.distance === '' ? undefined : Number(form.distance)
@@ -74,7 +86,7 @@ const ActivityForm = ({ userId, initialData, onSubmit, onCancel }) => {
       await onSubmit(payload);
 
       if (!initialData) {
-        setForm(createDefaultForm());
+        setForm(createDefaultForm(targetUserId));
       }
     } catch (err) {
       setErrors((prev) => ({ ...prev, form: err.message || 'Unable to save activity' }));
@@ -96,7 +108,27 @@ const ActivityForm = ({ userId, initialData, onSubmit, onCancel }) => {
       </div>
 
       {errors.form && <p className="error">{errors.form}</p>}
-      {errors.user && <p className="error">{errors.user}</p>}
+
+      {isAdmin && (
+        <label>
+          <span>User</span>
+          <select
+            value={form.userId}
+            onChange={(e) => setForm({ ...form, userId: e.target.value })}
+            required
+          >
+            <option value="">Select user</option>
+            {userOptions.map((opt) => (
+              <option key={opt._id} value={opt._id}>
+                {opt.username} ({opt.email})
+              </option>
+            ))}
+          </select>
+          <small className="muted">Admins can assign or reassign activities.</small>
+          {errors.user && <small className="error">{errors.user}</small>}
+        </label>
+      )}
+      {!isAdmin && errors.user && <p className="error">{errors.user}</p>}
 
       <div className="form-grid">
         <label>
